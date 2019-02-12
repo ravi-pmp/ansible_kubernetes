@@ -1,0 +1,73 @@
+---
+- hosts: all
+  tasks:
+    - name: install docker pre-req
+      yum: 
+        name: yum-utils,device-mapper-persistent-data,lvm2
+        state: present 
+    - name: add docker repo 
+      shell:  ' sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo' 
+      run_once: true
+    - name: install docker
+      yum: 
+        name: docker-ce
+        state: present 
+    - name: start and auto-start docker
+      service: 
+        name: docker
+        state: started
+        enabled: yes  
+    - name: copy kubernetes repo
+      copy: 
+        src: ./kubernetes.repo
+        dest: /etc/yum.repos.d/kubernetes.repo
+    - name: setenforce now 
+      shell:  'setenforce 0'
+    - name: disable selinux
+      selinux: 
+        state: disabled
+    - name: install kubernetes
+      yum: 
+        name: kubelet,kubeadm,kubectl 
+        disable_excludes: kubernetes
+        state: present 
+    - name: auto-start kubelet
+      service: 
+        name: kubelet
+        enabled: yes  
+    - name: make sysctl change
+      sysctl:
+        name: "{{ item  }}"
+        value: 1
+        sysctl_set: yes
+        state: present
+        reload: yes
+      with_items:
+        - net.ipv4.ip_forward
+        - net.bridge.bridge-nf-call-ip6tables
+        - net.bridge.bridge-nf-call-iptables
+    - name: load module 
+      modprobe:
+        name: br_netfilter
+        state: present
+      tags: modprobe
+    - name: install sshpass 
+      yum: 
+        name: sshpass 
+        state: present 
+      tags: sshpass
+    - name: Remove swapfile from /etc/fstab
+      mount:
+        name: swap
+        fstype: swap
+        state: absent
+      tags: swap
+    - name: Disable swap
+      shell: swapoff -a
+      tags: swap_now
+
+
+
+
+
+
